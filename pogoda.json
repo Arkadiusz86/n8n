@@ -1,0 +1,136 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://danepubliczne.imgw.pl/api/data/synop/station/lodz",
+        "options": {}
+      },
+      "id": "8f2d72fd-9954-4517-b357-91f0b4dec8c1",
+      "name": "Pobierz dane IMGW",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        0
+      ],
+      "id": "0612a947-46e1-4522-b738-6c53d33adb96",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9a110512-297d-4263-a693-7fc37e23386d",
+              "name": "stacja",
+              "value": "={{ $json.stacja }}",
+              "type": "string"
+            },
+            {
+              "id": "5948af03-dd9e-4f85-bfb3-26ac41ef58f8",
+              "name": "data_pomiaru",
+              "value": "={{ $json.data_pomiaru }}",
+              "type": "string"
+            },
+            {
+              "id": "d9caff33-df52-4b19-b638-d4a1cf935248",
+              "name": "godzina_pomiaru",
+              "value": "={{ $json.godzina_pomiaru }}",
+              "type": "string"
+            },
+            {
+              "id": "de93e86f-6df9-4600-bd09-867432b0f5e8",
+              "name": "temperatura",
+              "value": "={{ $json.temperatura }}",
+              "type": "string"
+            },
+            {
+              "id": "7b4bae28-fa81-4641-a5ac-6a73a05a86ce",
+              "name": "suma_opadu",
+              "value": "={{ $json.suma_opadu }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        420,
+        0
+      ],
+      "id": "272a6d71-7c11-45d9-ae02-0c60fa6d185b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log($json);\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "040bf6b7-2f4b-4e39-a51a-badb0fb50c00",
+      "name": "Code"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Pobierz dane IMGW": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Pobierz dane IMGW",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e3aaf027-06c5-455b-bcee-db98de066997",
+  "meta": {
+    "instanceId": "749f1f95cb65b609a319507a42f06576020f5fa5c4cb59c4bd6503045613c3bb"
+  },
+  "id": "ULsIE35JLy77jfG1",
+  "tags": []
+}
