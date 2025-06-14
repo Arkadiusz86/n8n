@@ -1,0 +1,208 @@
+{
+  "name": "Newsletter-bez google i AI copy",
+  "nodes": [
+    {
+      "parameters": {arek@as
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        -180
+      ],
+      "id": "a994b80b-e510-4052-b4db-e9505c03f83b",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet html = '<div style=\"font-family: Arial; max-width: 600px;\">';\n\nitems.forEach((item, index) => {\n  const title = item.json.title || 'Brak tytułu';\n  const url = item.json.link || '#';\n  const snippet = (item.json['content:encodedSnippet'] || item.json.content || '').slice(0, 200);\n\n\n  html += `<h3 style=\"color: #e67e22;\">${index + 1}. ${title}</h3>`;\n  html += `<p>${snippet}</p>`;\n  html += `<a href=\"${url}\" style=\"color: #3498db;\">Zobacz artykuł</a><hr>`;\n});\n\nhtml += '</div>';\n\nreturn [{ json: { aggregatedArticles: html } }];\n"
+      },
+      "id": "87a92eec-cf21-444f-8316-626306d38867",
+      "name": "Format Prompt1",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1280,
+        -180
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "ignoreSSL": false
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        580,
+        -180
+      ],
+      "id": "dab5064a-6036-4bfc-98a5-d076b62bfbe4",
+      "name": "RSS Read1",
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "retryOnFail": false,
+      "notesInFlow": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Zbierz wpisy (każdy item to osobny wpis)\nconst allItems = $input.all().map(entry => entry.json);\n\n// Posortuj po dacie malejąco i wybierz 5 najnowszych\nconst recentItems = allItems\n  .sort((a, b) => new Date(b.isoDate || b.pubDate) - new Date(a.isoDate || a.pubDate))\n  .slice(0, 5);\n\n// Zwróć jako osobne elementy\nreturn recentItems.map(item => ({ json: item }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -180
+      ],
+      "id": "6e1b3e56-4eba-4b6d-92ad-257a9538548c",
+      "name": "Ekstrakcja najnowszych1"
+    },
+    {
+      "parameters": {
+        "command": "cat <twoja-ścieżka-pliku>"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        60,
+        -180
+      ],
+      "id": "b4954d84-5d3a-4b72-b804-48ea7748cd30",
+      "name": "SSH",
+      "credentials": {
+
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.all().map(i => i.json.stdout).join('\\n');\n\nconst lines = raw\n  .split('\\n')\n  .map(l => l.trim())\n  .filter(l =>\n    l.startsWith('http') && /^https?:\\/\\/\\S+\\.\\S+/.test(l)\n  );\n\nreturn lines.map(link => ({ json: { url: link } }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        -180
+      ],
+      "id": "78a4007b-839e-4ae1-aad2-b8b0ebde4980",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fromEmail": "(to podaj mail)",
+        "toEmail": "(to podaj mail)",
+        "subject": "=Nowości z branży IT",
+        "html": "={{ $json.aggregatedArticles }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1720,
+        -180
+      ],
+      "id": "c4b39900-ee73-4b96-8164-6fac7c9bb110",
+      "name": "Send Email",
+      "webhookId": "",
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Format Prompt1": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "Ekstrakcja najnowszych1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ekstrakcja najnowszych1": {
+      "main": [
+        [
+          {
+            "node": "Format Prompt1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "SSH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "ecdb8bd8-5fef-4004-b77b-5a706d4f63e6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eafe2bbd986238e59814b283c70b7d1fbe21985157b8fc2e91846a1f8d4dd92a"
+  },
+  "id": "dnk3GufDqYwkWFAK",
+  "tags": []
+}

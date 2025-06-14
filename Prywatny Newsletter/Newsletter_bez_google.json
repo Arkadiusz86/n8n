@@ -1,0 +1,251 @@
+{
+  "name": "Newsletter-bez google",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        -180
+      ],
+      "id": "23568833-4a1f-4368-b6ae-05fddfbe321d",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet html = '<div style=\"font-family: Arial; max-width: 600px;\">';\n\nitems.forEach((item, index) => {\n  const title = item.json.title || 'Brak tytułu';\n  const url = item.json.link || '#';\n  const snippet = (item.json['content:encodedSnippet'] || item.json.content || '').slice(0, 200);\n\n\n  html += `<h3 style=\"color: #e67e22;\">${index + 1}. ${title}</h3>`;\n  html += `<p>${snippet}</p>`;\n  html += `<a href=\"${url}\" style=\"color: #3498db;\">Zobacz artykuł</a><hr>`;\n});\n\nhtml += '</div>';\n\nreturn [{ json: { aggregatedArticles: html } }];\n"
+      },
+      "id": "c9e37cca-da16-4c07-a0de-bd4eeea66cc0",
+      "name": "Format Prompt1",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1380,
+        -180
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "ignoreSSL": false
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        580,
+        -180
+      ],
+      "id": "01b80736-f5fa-4e00-a849-8b832da84f4b",
+      "name": "RSS Read1",
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "retryOnFail": false,
+      "notesInFlow": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Zbierz wpisy (każdy item to osobny wpis)\nconst allItems = $input.all().map(entry => entry.json);\n\n// Posortuj po dacie malejąco i wybierz 5 najnowszych\nconst recentItems = allItems\n  .sort((a, b) => new Date(b.isoDate || b.pubDate) - new Date(a.isoDate || a.pubDate))\n  .slice(0, 5);\n\n// Zwróć jako osobne elementy\nreturn recentItems.map(item => ({ json: item }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -180
+      ],
+      "id": "761b9955-eeab-46ac-9ec9-a91e8cbeccc6",
+      "name": "Ekstrakcja najnowszych1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Twoim zadaniem jest stworzenie treści newslettera HTML z najnowszymi newsami w podanych obszarach\n\nOto lista źródeł (tytuł, opis, link) z blogów w formacie HTML:\n{{ $json.aggregatedArticles }}\n\n\n\nNie opisuj tej funkcji, tylko po prostu ją wywołaj aby jej wynik pomógł stworzyć lepszy newsletter.\n\nNa podstawie **obu źródeł** (RSS i wyszukiwarki) stwórz **spójną całość**:\n– wybierz 5 najciekawszych treści,\n– nie rozdzielaj ich na sekcje,\n– potraktuj wszystko jako jedno źródło inspiracji.\n\nNie dodawaj bloków „inne propozycje” – wszystko zepnij w jeden logiczny newsletter.\n\nGdy już zbierzesz wszystkie potrzebne dane:\n\nZwróć TYLKO poniższy obiekt JSON — bez komentarzy i bez dodatkowego tekstu:\n\n{\n  \"newsletterTitle\": \"Tu wpisz tytuł newslettera po polsku\",\n  \"htmlContent\": \"Tu wstaw cały HTML newslettera – powinien zawierać: <br> - wprowadzenie, <br> - 3–5 sformatowanych artykułów z linkami, <br> - zakończenie np. „Dziękujemy za subskrypcję!”\"\n}\n\nNewsletter powinien być napisany lekkim, inspirującym językiem. Język: polski. Styl: newsletter HTML. Nie dodawaj żadnych instrukcji – tylko czysty JSON.\n"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "id": "4d2bc57e-3ec1-47c7-adae-a8aa5b9c6485",
+      "name": "Generate HTML Newsletter",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        1600,
+        -180
+      ],
+      "typeVersion": 1.8,
+      "credentials": {
+        "openAiApi": {
+          "id": "<id-openai>",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "cat <twoja-ścieżka-pliku>"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        60,
+        -180
+      ],
+      "id": "259b19a5-dd03-4cdc-99aa-b185d06b0d2a",
+      "name": "SSH",
+      "credentials": {
+
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.all().map(i => i.json.stdout).join('\\n');\n\nconst lines = raw\n  .split('\\n')\n  .map(l => l.trim())\n  .filter(l =>\n    l.startsWith('http') && /^https?:\\/\\/\\S+\\.\\S+/.test(l)\n  );\n\nreturn lines.map(link => ({ json: { url: link } }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        -180
+      ],
+      "id": "98fe26a2-0602-4da1-a8e6-f254bc4e894e",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fromEmail": "(to podaj mail)",
+        "toEmail": "(to podaj mail)",
+        "subject": "={{ $json.message.content.newsletterTitle }}",
+        "html": "={{ $json.message.content.htmlContent }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1976,
+        -180
+      ],
+      "id": "fd0e9361-4bdd-4205-86eb-6c2a69cee074",
+      "name": "Send Email",
+      "webhookId": "",
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Format Prompt1": {
+      "main": [
+        [
+          {
+            "node": "Generate HTML Newsletter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "Ekstrakcja najnowszych1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ekstrakcja najnowszych1": {
+      "main": [
+        [
+          {
+            "node": "Format Prompt1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate HTML Newsletter": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "SSH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "668d64a5-ed91-4b14-bea8-f90a67d89c6f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eafe2bbd986238e59814b283c70b7d1fbe21985157b8fc2e91846a1f8d4dd92a"
+  },
+  "id": "RE8NMS3isaTVch3V",
+  "tags": []
+}
