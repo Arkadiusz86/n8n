@@ -1,6 +1,10 @@
 # 📬 Automatyczny Newsletter IT – n8n Workflow
 
 Ten projekt to w pełni zautomatyzowany workflow oparty na [n8n](https://n8n.io), który generuje newsletter HTML z najnowszymi wpisami z kanałów RSS związanych z IT, devops, bezpieczeństwem i open source.
+W repozytorium znajdziesz 3 wersje:
+- Wyszukiwanie treści przez Google i selekcja z użyciem AI (plik Newsletter.json)
+- Bez wyszukiwania, ale z  AI (plik Newsletter_bez_google.json)
+- Bez Google i bez AI (plik Newsletter_bez_google_i_AI_copy.json)
 
 ## 🔧 Funkcje
 
